@@ -404,6 +404,29 @@ export const getRecentCommitments = query({
     }
 })
 
+const undoPeriod = 10 * 1000; // 10 seconds
+
+export const getCommitmentUndoPeriod = query({
+    args: {},
+    handler: async (ctx) => {
+        // 10 seconds
+        return { durationMs: undoPeriod };
+    }
+})
+
+export const undoCommitment = mutation({
+    args: {
+        commitmentId: v.id("commitments"),
+    },
+    handler: async (ctx, { commitmentId }) => {
+        const commitment = await getOwnedPendingCommitment(ctx, commitmentId, false);
+        if (commitment._creationTime + undoPeriod < Date.now()) {
+            throw new Error("Undo period has expired");
+        }
+        await ctx.db.delete(commitmentId);
+    }
+})
+
 export const cancelCommitment = mutation({
     args: {
         commitmentId: v.id("commitments"),

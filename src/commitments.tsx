@@ -16,21 +16,28 @@ export function CommitmentCard({ goal, commitment }: { goal: Doc<"goals">, commi
     const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
     const timeRemainingStr = timeRemaining < 0 ? "00:00:00" : `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 
+    const undoCommitment = useMutation(api.functions.undoCommitment);
     const cancelCommitment = useMutation(api.functions.cancelCommitment);
-    const cancelThisCommitment = () => {
-        const reason = prompt("Enter reason for cancelling this commitment:");
-        if (!reason) return;
-        cancelCommitment({
-            commitmentId: commitment._id,
-            reason,
-        })
+    const undoPeriod = useQuery(api.functions.getCommitmentUndoPeriod);
+    const canUndoCommitment = undoPeriod !== undefined && (Date.now() - Number(commitment._creationTime)) <= undoPeriod.durationMs;
+    const undoOrCancelCommitment = () => {
+        if (canUndoCommitment) {
+            undoCommitment({ commitmentId: commitment._id });
+        } else {
+            const reason = prompt("Enter reason for cancelling this commitment:");
+            if (!reason) return;
+            cancelCommitment({
+                commitmentId: commitment._id,
+                reason,
+            })
+        }
     }
 
     return (
         <div className="_card bg-amber-200 justify-between flex-row!">
             <div className="flex flex-col items-start gap-1.5">
                 <b className="text-md">{goal.title}</b>
-                <button className="_button px-2! py-1! border-2! border-gray-700! bg-amber-100! hover:bg-amber-50!" onClick={cancelThisCommitment}>Cancel</button>
+                <button className="_button px-2! py-1! border-2! border-gray-700! bg-amber-100! hover:bg-amber-50!" onClick={undoOrCancelCommitment}>{canUndoCommitment ? "Undo" : "Cancel"}</button>
                 {/* todo: allow cancelling without reason up to 10s after creation, reflect in button "undo" */}
             </div>
             <div className="flex justify-end">
