@@ -314,6 +314,7 @@ export const createCommitment = mutation({
             completedAt: null,
             cancelledAt: null,
             comment: null,
+            scoldedBy: [],
         });
 
         await ctx.db.patch(goalId, {
@@ -468,6 +469,77 @@ export const completeCommitment = mutation({
     }
 })
 
+export const getDashboardCommitments = query({
+    args: {},
+    handler: async (ctx) => {
+        const user = await getUser(ctx);
+
+        const commitments: {
+            userId: string,
+            userName: string,
+            goal: Doc<"goals">,
+            commitment: Doc<"commitments">
+        }[] = [];
+
+        // own failed commitments without comments
+        const ownGoals = await ctx.db.query("goals").withIndex("by_owner", q =>
+            q.eq("owner", user._id)
+        ).collect();
+        for (const goal of ownGoals) {
+            const goalCommitments = await ctx.db.query("commitments").withIndex("by_goal", q =>
+                q.eq("goal", goal._id)
+            ).collect();
+            for (const commitment of goalCommitments) {
+                if (commitment.completedAt === null &&
+                    commitment.cancelledAt === null &&
+                    commitment.due < BigInt(Date.now()) &&
+                    (commitment.comment === null || commitment.comment.trim() === "")) {
+                    commitments.push({
+                        userId: user._id.toString(),
+                        userName: user.name,
+                        goal,
+                        commitment,
+                    });
+                }
+            }
+        }
+
+        // friends' failed/cancelled commitments that were not yet scolded by the user
+        const friends = await Promise.all(user.friends.map(async friendId => {
+            const friend = await ctx.db.get(friendId);
+            if (!friend) {
+                return null;
+            }
+            return friend;
+        }));
+        for (const friend of friends.filter(f => f !== null) as Doc<"users">[]) {
+            const friendGoals = await ctx.db.query("goals").withIndex("by_owner", q =>
+                q.eq("owner", friend._id)
+            ).collect();
+            for (const goal of friendGoals) {
+                const goalCommitments = await ctx.db.query("commitments").withIndex("by_goal", q =>
+                    q.eq("goal", goal._id)
+                ).collect();
+                for (const commitment of goalCommitments) {
+                    const isCancelled = commitment.cancelledAt !== null;
+                    const isFailed = commitment.completedAt === null && commitment.cancelledAt === null && commitment.due < BigInt(Date.now());
+                    const isNotScolded = !commitment.scoldedBy.includes(user._id);
+                    if ((isCancelled || isFailed) && isNotScolded) {
+                        commitments.push({
+                            userId: friend._id.toString(),
+                            userName: friend.name,
+                            goal,
+                            commitment,
+                        });
+                    }
+                }
+            }
+        }
+
+        return commitments;
+    }
+})
+
 export const getRecentCommitments = query({
     args: {},
     handler: async (ctx) => {
@@ -554,3 +626,88 @@ export const commentOnCommitment = mutation({
         });
     }
 })
+
+export const scoldCommitment = mutation({
+    args: {
+        commitmentId: v.id("commitments"),
+    },
+    handler: async (ctx, { commitmentId }) => {
+        const user = await getUser(ctx);
+        const commitment = await ctx.db.get(commitmentId);
+        if (!commitment) {
+            throw new Error("Commitment not found");
+        }
+        const goal = await ctx.db.get(commitment.goal);
+        if (!goal) {
+            throw new Error("Commitment's goal not found");
+        }
+        const owner = await ctx.db.get(goal.owner);
+        if (!owner) {
+            throw new Error("Commitment's goal owner not found");
+        }
+        if (!owner.friends.includes(user._id)) {
+            throw new Error("You're not friends with the commitment's owner");
+        }
+        if (commitment.completedAt !== null) {
+            throw new Error("Cannot scold a completed commitment");
+        }
+        if (commitment.completedAt === null && commitment.cancelledAt === null && Date.now() <= Number(commitment.due)) {
+            throw new Error("Cannot scold a pending commitment");
+        }
+        if (commitment.scoldedBy.includes(user._id)) {
+            throw new Error("You have already scolded this commitment");
+        }
+        await ctx.db.patch(commitmentId, {
+            scoldedBy: [...commitment.scoldedBy, user._id],
+        });
+        await ctx.db.insert("unacknowledgedScolds", {
+            userId: goal.owner,
+            commitmentId: commitment._id,
+            by: user._id,
+        });
+    }
+})
+
+export const getUnacknowledgedScolds = query({
+    args: {},
+    handler: async (ctx) => {
+        const user = await getUser(ctx);
+        const scolds = await ctx.db.query("unacknowledgedScolds").withIndex("by_user", q =>
+            q.eq("userId", user._id)
+        ).collect();
+        return await Promise.all(scolds.map(async scold => {
+            const commitment = await ctx.db.get(scold.commitmentId);
+            if (!commitment) {
+                throw new Error("Scold's commitment not found");
+            }
+            const goal = await ctx.db.get(commitment.goal);
+            if (!goal) {
+                throw new Error("Scold's commitment's goal not found");
+            }
+            return {
+                _id: scold._id,
+                byName: (await ctx.db.get(scold.by))?.name ?? "Someone",
+                goalTitle: goal.title,
+            };
+        }));
+    }
+})
+
+export const acknowledgeScold = mutation({
+    args: {
+        scoldId: v.id("unacknowledgedScolds"),
+    },
+    handler: async (ctx, { scoldId }) => {
+        const user = await getUser(ctx);
+        const scold = await ctx.db.get(scoldId);
+        if (!scold) {
+            throw new Error("Scold not found");
+        }
+        if (scold.userId !== user._id) {
+            throw new Error("Not your scold");
+        }
+        await ctx.db.delete(scoldId);
+    }
+})
+
+// todo: unify commitment status checks

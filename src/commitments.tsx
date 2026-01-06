@@ -46,7 +46,7 @@ export function CommitmentCard({ goal, commitment }: { goal: Doc<"goals">, commi
     )
 }
 
-export function CommitmentCardResult({ showCommentButton, commitment }: { showCommentButton: boolean, commitment: Doc<"commitments"> }) {
+export function CommitmentCardResult({ ownerAndGoal, couldScold, showCommentButton, commitment }: { ownerAndGoal: { owner: string | "self", goal: string } | undefined, couldScold: boolean, showCommentButton: boolean, commitment: Doc<"commitments"> }) {
     const now = useTimer();
     const status = commitment.completedAt ? "completed" : commitment.cancelledAt ? "cancelled" : commitment.due < now ? "failed" : "pending";
 
@@ -57,6 +57,12 @@ export function CommitmentCardResult({ showCommentButton, commitment }: { showCo
         commentOnCommitment({ commitmentId: commitment._id, comment });
     }
 
+    const userInfo = useQuery(api.functions.getUserInfo);
+    const scoldCommitment = useMutation(api.functions.scoldCommitment);
+    const scold = () => {
+        scoldCommitment({ commitmentId: commitment._id });
+    }
+
     return (
         <div key={commitment._id.toString()} className={classNames("_card py-3! pe-3! flex flex-col items-stretch", {
             "bg-green-300": status === "completed",
@@ -64,6 +70,9 @@ export function CommitmentCardResult({ showCommentButton, commitment }: { showCo
             "bg-red-300": status === "failed",
             "bg-amber-200": status === "pending",
         })}>
+            {ownerAndGoal && <div className="">
+                {ownerAndGoal.owner === "self" ? <b>Your</b> : <><b>{ownerAndGoal.owner}</b>'s</>} goal: <b>{ownerAndGoal.goal}</b>
+            </div>}
             <div className="flex justify-between items-center">
                 <div>{new Date(Number(commitment.due)).toLocaleString()}</div>
                 <div>{status.charAt(0).toUpperCase() + status.slice(1)}</div>
@@ -74,6 +83,11 @@ export function CommitmentCardResult({ showCommentButton, commitment }: { showCo
                     <button className="_button px-2! py-1! text-xs! mt-1 hover:bg-amber-100!" onClick={comment}>{commitment.comment ? "Edit" : "Comment"}</button>
                 }
             </div>
+            {couldScold && userInfo && !commitment.scoldedBy.includes(userInfo._id) && (status === "failed" || status === "cancelled") && (
+                <div className="flex justify-end">
+                    <button className="_button hover:bg-amber-100! mt-2" onClick={scold}>Scold</button>
+                </div>
+            )}
         </div>
     );
 }
@@ -104,7 +118,7 @@ export function CompleteCommitmentsPage() {
             {!recentCommitments && <div>Loading commitments...</div>}
             {recentCommitments && recentCommitments.length === 0 && <div>No recent commitments yet.</div>}
             {recentCommitments && recentCommitments.length > 0 && <div className="flex flex-col gap-2">
-                {recentCommitments.sort((a, b) => -(a.due - b.due)).map(commitment => <CommitmentCardResult key={commitment._id.toString()} showCommentButton={false} commitment={commitment} />)}
+                {recentCommitments.sort((a, b) => -(a.due - b.due)).map(commitment => <CommitmentCardResult key={commitment._id.toString()} ownerAndGoal={undefined} couldScold={false} showCommentButton={false} commitment={commitment} />)}
             </div>}
         </div>
     );

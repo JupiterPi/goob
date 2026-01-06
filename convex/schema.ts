@@ -28,5 +28,11 @@ export default defineSchema({
     completedAt: v.nullable(v.number()),
     cancelledAt: v.nullable(v.number()),
     comment: v.nullable(v.string()),
+    scoldedBy: v.array(v.id("users")),
   }).index("by_goal", ["goal"]),
+  unacknowledgedScolds: defineTable({
+    userId: v.id("users"),
+    commitmentId: v.id("commitments"),
+    by: v.id("users"),
+  }).index("by_user", ["userId"]),
 })

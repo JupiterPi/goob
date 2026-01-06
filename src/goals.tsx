@@ -130,7 +130,7 @@ export function GoalPage() {
         {!commitments && <div>Loading commitments...</div>}
         {commitments && commitments.length === 0 && <div>No commitments yet.</div>}
         {commitments && commitments.length > 0 && <div className="flex flex-col gap-2">
-            {commitments.sort((a, b) => -(a.due - b.due)).map(commitment => <CommitmentCardResult key={commitment._id.toString()} commitment={commitment} showCommentButton={goal.isOwn} />)}
+            {commitments.sort((a, b) => -(a.due - b.due)).map(commitment => <CommitmentCardResult key={commitment._id.toString()} ownerAndGoal={undefined} couldScold={!goal.isOwn} commitment={commitment} showCommentButton={goal.isOwn} />)}
         </div>}
     </div>
 }
