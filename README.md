@@ -1,49 +1,16 @@
-# Welcome to your Convex + React (Vite) + Clerkapp
+# [GOOB (Get Out Of Bed)](https://goob.jupiterpi.de)
 
-This is a [Convex](https://convex.dev/) project created with [`npm create convex`](https://www.npmjs.com/package/create-convex).
+GOOB is an app that gets you out of bed quickly!
 
-After the initial setup (<2 minutes) you'll have a working full-stack app using:
+- Set **commitments** on goals, and you **can't take them back!**
+- Complete them before their due date using the **completion key**, e. g. by **scanning a QR code** or **tapping an NFC tag** at a **physical location** (helps you get out of bed in record time!)
+- All your failed commitments show up in **your friends'** timeline, where they can **scold you** for being bad, see it in your timeline and you **feel bad**
 
-- Convex as your backend (database, server logic)
-- [React](https://react.dev/) as your frontend (web page interactivity)
-- [Vite](https://vitest.dev/) for optimized web hosting
-- [Tailwind](https://tailwindcss.com/) for building great looking accessible UI
-- [Clerk](https://clerk.com/) for authentication
+Also:
+- Set goals for anything, and use any completion key (as long as it can open a link)
+- Comment on why you failed or needed to cancel a commitment
+- Share your completion keys with others (e. g. people in the same household using the same physical completion keys)
 
-## Get started
+Roadmap: push notifications, QR code generator, helpful guides, prettier UI
 
-If you just cloned this codebase and didn't use `npm create convex`, run:
-
-```
-npm install
-npm run dev
-```
-
-If you're reading this README on GitHub and want to use this template, run:
-
-```
-npm create convex@latest -- -t react-vite-clerk
-```
-
-Then:
-
-1. Follow steps 1 to 3 in the [Clerk onboarding guide](https://docs.convex.dev/auth/clerk#get-started)
-2. Paste the Issuer URL as `CLERK_JWT_ISSUER_DOMAIN` to your dev deployment environment variable settings on the Convex dashboard (see [docs](https://docs.convex.dev/auth/clerk#configuring-dev-and-prod-instances))
-3. Paste your publishable key as `VITE_CLERK_PUBLISHABLE_KEY="<your publishable key>"` to the `.env.local` file in this directory.
-
-If you want to sync Clerk user data via webhooks, check out this [example repo](https://github.com/thomasballinger/convex-clerk-users-table/).
-
-## Learn more
-
-To learn more about developing your project with Convex, check out:
-
-- The [Tour of Convex](https://docs.convex.dev/get-started) for a thorough introduction to Convex principles.
-- The rest of [Convex docs](https://docs.convex.dev/) to learn about all Convex features.
-- [Stack](https://stack.convex.dev/) for in-depth articles on advanced topics.
-
-## Join the community
-
-Join thousands of developers building full-stack apps with Convex:
-
-- Join the [Convex Discord community](https://convex.dev/community) to get help in real-time.
-- Follow [Convex on GitHub](https://github.com/get-convex/), star and contribute to the open-source implementation of Convex.
+Let me know what you think, and thanks for using GOOB ⭐

@@ -32,8 +32,12 @@ export default function App() {
 
   return (
     <>
-      <header className="sticky top-0 z-10 bg-amber-300 p-4 border-b-2 border-slate-200 dark:border-slate-800 flex flex-row justify-between items-center">
+      <header className="sticky top-0 z-10 bg-amber-300 p-4 border-b-2 border-slate-200 dark:border-slate-800 flex flex-row items-center">
         <a href="/" className="text-lg font-semibold">GOOB</a>
+        <div className="flex-1"></div>
+        <a href="https://github.com/JupiterPi/goob" target="_blank" rel="noopener noreferrer" className="me-4">
+          <img src="/github.svg" alt="GitHub" className="inline size-6" />
+        </a>
         <UserButton />
       </header>
       <main className="p-8">
