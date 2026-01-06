@@ -71,8 +71,8 @@ export function CompleteCommitmentsPage() {
     useEffect(() => {
         if (!key) return;
         completeCommitment({ key }).then(result => {
-            if (result && typeof result.completed === "number") {
-                setNumberOfCompletions(n => (n ?? 0) + result.completed);
+            if (result && typeof result.commitmentsCompleted === "number") {
+                setNumberOfCompletions(n => (n ?? 0) + result.commitmentsCompleted);
             }
         });
     }, [key]);

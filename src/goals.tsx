@@ -3,8 +3,9 @@ import { api } from "../convex/_generated/api";
 import { Doc, Id } from "../convex/_generated/dataModel";
 import { useNavigate, useParams } from "react-router";
 import { BackButton } from "./App";
-import { useEphemeral } from "./util";
+import { CopyButton, useEphemeral } from "./util";
 import { CommitmentCardResult } from "./commitments";
+import { useState } from "react";
 
 export function CreateSampleGoalButton() {
     const createGoal = useMutation(api.functions.createGoal);
@@ -78,7 +79,61 @@ export function GoalCardShortCommitmentButtons({ goal }: { goal: Doc<"goals"> })
     </div>
 }
 
-export function GoalCardActionButtons({ goal }: { goal: Doc<"goals"> }) {
+export function CreateGoalButton() {
+    const createGoal = useMutation(api.functions.createGoal);
+    const createNewGoal = async () => {
+        const details = promptForGoalDetails();
+        if (!details) return;
+        await createGoal({
+            title: details.title,
+            description: details.description,
+        })
+    }
+    return (
+        <button onClick={createNewGoal} className="_button">
+            Create New Goal
+        </button>
+    )
+}
+
+export function GoalPage() {
+    // todo: show that goal is acrhived
+
+    const params = useParams<{ goalId: string }>();
+    const goalId = params.goalId as Id<"goals">;
+    const goal = useQuery(api.functions.getGoalPublic, { goalId });
+    const commitments = goal?.commitments;
+
+    const [showCompletionKeySection, setShowCompletionKeySection] = useState(false);
+
+    return <div className="flex flex-col gap-3">
+        <BackButton />
+
+        <div><b>{goal?.isOwn ? "Your" : `${goal?.ownerName}'s`}</b> Goal:</div>
+
+        {!goal && <div>Loading...</div>}
+        {goal && <GoalCard goal={goal.goal}>
+            {goal.isOwn && <GoalCardActionButtons goal={goal.goal} />}
+        </GoalCard>}
+
+        {goal?.isOwn && !showCompletionKeySection && <>
+            <button className="_button" onClick={() => setShowCompletionKeySection(true)}>&gt; Completion Key Options</button>
+        </>}
+        {goal?.isOwn && showCompletionKeySection && <>
+            <button className="_button" onClick={() => setShowCompletionKeySection(false)}>(minimize)</button>
+            <CompletionKeySection goal={goal.goal} />
+        </>}
+
+        <h2 className="mt-6">Timeline</h2>
+        {!commitments && <div>Loading commitments...</div>}
+        {commitments && commitments.length === 0 && <div>No commitments yet.</div>}
+        {commitments && commitments.length > 0 && <div className="flex flex-col gap-2">
+            {commitments.sort((a, b) => -(a.due - b.due)).map(commitment => <CommitmentCardResult key={commitment._id.toString()} commitment={commitment} />)}
+        </div>}
+    </div>
+}
+
+function GoalCardActionButtons({ goal }: { goal: Doc<"goals"> }) {
     const updateGoal = useMutation(api.functions.updateGoal);
     const editGoal = () => {
         const details = promptForGoalDetails();
@@ -106,58 +161,62 @@ export function GoalCardActionButtons({ goal }: { goal: Doc<"goals"> }) {
     )
 }
 
-export function CreateGoalButton() {
-    const createGoal = useMutation(api.functions.createGoal);
-    const createNewGoal = async () => {
-        const details = promptForGoalDetails();
-        if (!details) return;
-        await createGoal({
-            title: details.title,
-            description: details.description,
-        })
-    }
-    return (
-        <button onClick={createNewGoal} className="_button">
-            Create New Goal
-        </button>
-    )
-}
-
-export function GoalPage() {
-    const params = useParams<{ goalId: string }>();
-    const goalId = params.goalId as Id<"goals">;
-    const goal = useQuery(api.functions.getGoalPublic, { goalId });
-    const commitments = goal?.commitments;
+function CompletionKeySection({ goal }: { goal: Doc<"goals"> }) {
+    const user = useQuery(api.functions.getUserInfo);
+    const completionKey = useQuery(api.functions.getCompletionKey, { completionKeyId: goal.completionKey });
 
     const [wasJustCopied, setWasJustCopied] = useEphemeral(false, 2000);
     const copyCompletionLink = () => {
         if (!goal) return;
-        navigator.clipboard.writeText(`${window.location.origin}/complete/${goal.goal.key}`);
+        // todo: make it actually show up in timeline
+        if (!window.confirm("This action will show up in your timeline. Are you sure?")) return;
+        if (!completionKey) return;
+        navigator.clipboard.writeText(`${window.location.origin}/complete/${completionKey.key}`);
         setWasJustCopied(true);
     }
-    // todo: only show compltion key once when creating goal, or show it on the timeline for others to see
 
-    return <div className="flex flex-col gap-3">
-        <BackButton />
+    const setGoalCompletionKey = useMutation(api.functions.setGoalCompletionKey);
+    const regenerateCompletionKey = async () => {
+        const confirm = window.confirm("Regenerating the completion key will invalidate the previous key. Are you sure?");
+        if (!confirm) return;
+        await setGoalCompletionKey({
+            goalId: goal._id,
+            completionKey: undefined,
+        });
+    }
+    const importSharedKey = () => {
+        const sharedKey = prompt("Enter shared completion key:");
+        if (!sharedKey) return;
+        setGoalCompletionKey({
+            goalId: goal._id,
+            completionKey: sharedKey as Id<"completionKeys">,
+        });
+    }
 
-        <div><b>{goal?.isOwn ? "Your" : `${goal?.ownerName}'s`}</b> Goal:</div>
+    const renameCompletionKey = useMutation(api.functions.renameCompletionKey);
+    const renameThisCompletionKey = async () => {
+        const newName = prompt("Enter new name for completion key:", completionKey?.name);
+        if (!newName) return;
+        await renameCompletionKey({
+            completionKeyId: goal.completionKey,
+            name: newName,
+        });
+    }
 
-        {!goal && <div>Loading...</div>}
-        {goal && <GoalCard goal={goal.goal}>{goal.isOwn && <GoalCardActionButtons goal={goal.goal} />}</GoalCard>}
-
-        {goal?.isOwn && (
-            <div className="flex flex-col items-start gap-3 mt-4">
-                <h2 className="mb-0!">Completion Link</h2>
-                <p>Open the following link to complete a commitment for this goal:</p>
-                <button className="_button" onClick={copyCompletionLink}>{wasJustCopied ? "Copied!" : "Copy Completion Link"}</button>
+    return (
+        <div className="flex flex-col items-start gap-3 mt-4">
+            <h2 className="mb-0!">Completion Key</h2>
+            <p>Key: <b>{completionKey?.name}</b></p>
+            <div className="flex gap-2">
+                <button className="_button" onClick={regenerateCompletionKey}>Reset</button>
+                {completionKey?.creator === user?._id && <button className="_button" onClick={renameThisCompletionKey}>Rename</button>}
             </div>
-        )}
-
-        <h2 className="mt-6">Commitments</h2>
-        {!commitments && <div>Loading commitments...</div>}
-        {commitments && commitments.length === 0 && <div>No commitments yet.</div>}
-        {commitments && commitments.length > 0 && <div className="flex flex-col gap-2">
-            {commitments.sort((a, b) => -(a.due - b.due)).map(commitment => <CommitmentCardResult key={commitment._id.toString()} commitment={commitment} />)}
-        </div>}
-    </div>
+            <div className="flex gap-2">
+                <CopyButton label="Share" onCopy={() => completionKey?._id ?? ""} />
+                <button className="_button" onClick={importSharedKey}>Import Shared Key</button>
+            </div>
+            <button className="_button" onClick={copyCompletionLink}>{wasJustCopied ? "Copied!" : "Copy Completion Link"}</button>
+            <p>Open this link to complete a commitment for this goal.</p>
+        </div>
+    )
 }

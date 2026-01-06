@@ -25,3 +25,22 @@ export function useEphemeral<T>(defaultValue: T, timeoutMs: number) {
     }, [value, defaultValue]);
     return [value, setValue] as const;
 }
+
+// todo: use this elsewhere
+export function CopyButton({ label, onCopy }: { label?: string; onCopy?: () => string }) {
+    const [wasJustCopied, setWasJustCopied] = useEphemeral(false, 2000);
+    const handleCopy = () => {
+        let textToCopy = "";
+        if (onCopy) {
+            textToCopy = onCopy();
+        }
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            setWasJustCopied(true);
+        });
+    };
+    return (
+        <button className="_button" onClick={handleCopy}>
+            {wasJustCopied ? "Copied!" : label}
+        </button>
+    );
+}

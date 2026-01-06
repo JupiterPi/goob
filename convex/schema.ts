@@ -13,10 +13,15 @@ export default defineSchema({
     title: v.string(),
     description: v.string(),
     commitments: v.array(v.id("commitments")),
-    key: v.string(),
+    completionKey: v.id("completionKeys"),
     hide: v.boolean(),
     archived: v.boolean(),
   }).index("by_owner", ["owner"]),
+  completionKeys: defineTable({
+    creator: v.id("users"),
+    name: v.string(),
+    key: v.string(),
+  }),
   commitments: defineTable({
     goal: v.id("goals"),
     due: v.number(),

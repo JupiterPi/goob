@@ -1,6 +1,7 @@
 import { v } from "convex/values";
-import { mutation, query, QueryCtx } from "./_generated/server";
+import { mutation, MutationCtx, query, QueryCtx } from "./_generated/server";
 import { Doc, Id } from "./_generated/dataModel";
+import { faker } from "@faker-js/faker";
 
 export const storeUser = mutation({
     args: {},
@@ -158,22 +159,90 @@ function generateKey() {
     return key;
 }
 
+async function createCompletionKey(ctx: MutationCtx) {
+    const user = await getUser(ctx);
+    faker.seed();
+    return await ctx.db.insert("completionKeys", {
+        creator: user._id,
+        name: `random key ${faker.word.preposition()} ${faker.word.adjective()} ${faker.word.noun()}`,
+        key: generateKey(),
+    });
+}
+
 export const createGoal = mutation({
     args: {
         title: v.string(),
         description: v.string(),
+        completionKey: v.optional(v.id("completionKeys")),
     },
-    handler: async (ctx, { title, description }) => {
+    handler: async (ctx, { title, description, completionKey }) => {
         const user = await getUser(ctx);
         return await ctx.db.insert("goals", {
             owner: user._id,
             title,
             description,
             commitments: [],
-            key: generateKey(),
+            completionKey: completionKey ?? await createCompletionKey(ctx),
             hide: false,
             archived: false,
         })
+    }
+})
+
+export const getCompletionKey = query({
+    args: {
+        completionKeyId: v.id("completionKeys"),
+    },
+    handler: async (ctx, { completionKeyId }) => {
+        const key = await ctx.db.get(completionKeyId);
+        if (!key) {
+            throw new Error("Completion key not found");
+        }
+        return key;
+    }
+})
+
+export const setGoalCompletionKey = mutation({
+    args: {
+        goalId: v.id("goals"),
+        completionKey: v.optional(v.id("completionKeys")),
+    },
+    handler: async (ctx, { goalId, completionKey }) => {
+        await getOwnedGoal(ctx, goalId);
+        await ctx.db.patch(goalId, {
+            completionKey: completionKey ?? await createCompletionKey(ctx),
+        });
+
+        // delete unused completion keys
+        const keys = await ctx.db.query("completionKeys").collect();
+        const usedKeys = new Set<Id<"completionKeys">>();
+        const goals = await ctx.db.query("goals").collect();
+        for (const goal of goals) {
+            usedKeys.add(goal.completionKey);
+        }
+        for (const key of keys) {
+            if (!usedKeys.has(key._id)) {
+                ctx.db.delete(key._id);
+            }
+        }
+    }
+})
+
+export const renameCompletionKey = mutation({
+    args: {
+        completionKeyId: v.id("completionKeys"),
+        name: v.string(),
+    },
+    handler: async (ctx, { completionKeyId, name }) => {
+        const user = await getUser(ctx);
+        const key = await ctx.db.get(completionKeyId);
+        if (!key) {
+            throw new Error("Completion key not found");
+        }
+        if (key.creator !== user._id) {
+            throw new Error("Not your completion key");
+        }
+        await ctx.db.patch(completionKeyId, { name: `${user.name}'s key ${name}` });
     }
 })
 
@@ -352,25 +421,27 @@ export const completeCommitment = mutation({
         const goals = await ctx.db.query("goals").withIndex("by_owner", q =>
             q.eq("owner", user._id)
         ).collect();
-        const goal = goals.find(g => g.key === key);
-        if (!goal) {
-            throw new Error("Goal not found");
-        }
-        const commitments = await ctx.db.query("commitments").withIndex("by_goal", q =>
-            q.eq("goal", goal._id)
-        ).collect();
-        const results = await Promise.all(commitments.filter(c => {
-            try {
-                assertCommitmentIsPending(c);
-                return true;
-            } catch {
-                return false;
+        let commitmentsCompleted = 0;
+        for (const goal of goals) {
+            const completionKey = await ctx.db.get(goal.completionKey);
+            if (completionKey && completionKey.key === key) {
+                const commitments = await ctx.db.query("commitments").withIndex("by_goal", q =>
+                    q.eq("goal", goal._id)
+                ).collect();
+                commitmentsCompleted += (await Promise.all(commitments.filter(c => {
+                    try {
+                        assertCommitmentIsPending(c);
+                        return true;
+                    } catch {
+                        return false;
+                    }
+                }).map(async commitment => {
+                    await ctx.db.patch(commitment._id, { completedAt: Date.now() });
+                    return 1
+                }))).reduce((a, b) => a + b, 0);
             }
-        }).map(async commitment => {
-            await ctx.db.patch(commitment._id, { completedAt: Date.now() });
-            return 1
-        }))
-        return { completed: results.reduce((a, b) => a + b, 0) }
+        }
+        return { commitmentsCompleted };
     }
 })
 
@@ -408,7 +479,7 @@ const undoPeriod = 10 * 1000; // 10 seconds
 
 export const getCommitmentUndoPeriod = query({
     args: {},
-    handler: async (ctx) => {
+    handler: async () => {
         // 10 seconds
         return { durationMs: undoPeriod };
     }
