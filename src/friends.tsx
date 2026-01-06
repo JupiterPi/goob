@@ -4,7 +4,7 @@ import { useEphemeral } from "./util";
 import { useNavigate, useParams } from "react-router";
 import { Id } from "../convex/_generated/dataModel";
 import { BackButton } from "./App";
-import { GoalCard } from "./goals";
+import { GoalCard, GoalCardViewButton } from "./goals";
 
 export function YourFriends() {
     const userInfo = useQuery(api.functions.getUserInfo);
@@ -59,7 +59,7 @@ export function YourFriends() {
                 <div key={friend._id.toString()} className="_card flex-row! items-center py-3! pe-3! gap-2">
                     {friend.name}
                     <div className="flex-1"></div>
-                    <button className="_button" onClick={() => viewFriend(friend._id)}>Goals</button>
+                    {friend.isMutualFriend && <button className="_button" onClick={() => viewFriend(friend._id)}>Goals</button>}
                     <button className="_button" onClick={() => removeThisFriend(friend._id)}>Remove</button>
                 </div>
             ))}
@@ -76,11 +76,6 @@ export function FriendPage() {
     const friendId = params.friendId as Id<"users">;
     const friendInfoAndGoals = useQuery(api.functions.getFriendInfoAndGoals, { friendId });
 
-    const navigate = useNavigate();
-    const viewGoal = (goalId: Id<"goals">) => {
-        navigate(`/goal/${goalId.toString()}`);
-    }
-
     return (
         <div className="flex flex-col gap-3">
             <BackButton />
@@ -91,7 +86,7 @@ export function FriendPage() {
                 {friendInfoAndGoals.goals.length > 0 && <div className="flex flex-col gap-2 mt-2">
                     {friendInfoAndGoals.goals.map(goal => (
                         <GoalCard key={goal._id.toString()} goal={goal}>
-                            <button className="_button" onClick={() => viewGoal(goal._id)}>View</button>
+                            <GoalCardViewButton goal={goal} />
                         </GoalCard>
                     ))}
                 </div>}

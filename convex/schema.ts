@@ -13,6 +13,7 @@ export default defineSchema({
     title: v.string(),
     description: v.string(),
     commitments: v.array(v.id("commitments")),
+    key: v.string(),
     hide: v.boolean(),
     archived: v.boolean(),
   }).index("by_owner", ["owner"]),

@@ -14,6 +14,7 @@ import { api } from "../convex/_generated/api";
 import { BrowserRouter, Route, Routes } from "react-router";
 import { GoalPage } from "./goals";
 import { FriendPage } from "./friends";
+import { CompleteCommitmentsPage } from "./commitments";
 
 export default function App() {
   const { isAuthenticated } = useConvexAuth();
@@ -32,7 +33,7 @@ export default function App() {
   return (
     <>
       <header className="sticky top-0 z-10 bg-amber-300 p-4 border-b-2 border-slate-200 dark:border-slate-800 flex flex-row justify-between items-center">
-        <span className="text-lg font-semibold">GOOB</span>
+        <a href="/" className="text-lg font-semibold">GOOB</a>
         <UserButton />
       </header>
       <main className="p-8">
@@ -42,6 +43,7 @@ export default function App() {
               <Route index element={<Home />} />
               <Route path="goal/:goalId" element={<GoalPage />} />
               <Route path="friend/:friendId" element={<FriendPage />} />
+              <Route path="complete/:key" element={<CompleteCommitmentsPage />} />
             </Routes>
           </BrowserRouter>
         </Authenticated>

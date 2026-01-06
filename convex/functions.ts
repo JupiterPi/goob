@@ -66,8 +66,8 @@ export const getFriendInfoAndGoals = query({
         if (!friend) {
             throw new Error("Friend not found");
         }
-        if (!user.friends.includes(friend._id)) {
-            throw new Error("Not your friend");
+        if (!friend.friends.includes(user._id)) {
+            throw new Error("You're not their friend");
         }
         const goals = (await ctx.db.query("goals").withIndex("by_owner", q =>
             q.eq("owner", friend._id)
@@ -102,9 +102,10 @@ export const getFriends = query({
             return {
                 _id: friend._id,
                 name: friend.name,
+                isMutualFriend: friend.friends.includes(user._id),
             };
         }));
-        return friends.filter((f): f is Doc<"users"> => f !== null);
+        return friends.filter(f => f !== null);
     }
 })
 
@@ -147,6 +148,16 @@ export const removeFriend = mutation({
     }
 })
 
+function generateKey() {
+    // generate an 8-character random alphanumeric string
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let key = "";
+    for (let i = 0; i < 8; i++) {
+        key += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return key;
+}
+
 export const createGoal = mutation({
     args: {
         title: v.string(),
@@ -159,6 +170,7 @@ export const createGoal = mutation({
             title,
             description,
             commitments: [],
+            key: generateKey(),
             hide: false,
             archived: false,
         })
@@ -301,9 +313,16 @@ export const getGoalPublic = query({
         if (!owner) {
             throw new Error("Goal owner not found");
         }
-        const mayViewGoal = goal.owner === user._id || (!goal.hide && !goal.archived && owner.friends.includes(user._id));
-        if (!mayViewGoal) {
-            throw new Error("You do not have permission to view this goal");
+        if (goal.owner !== user._id) {
+            if (goal.hide) {
+                throw new Error("This goal is hidden");
+            }
+            if (goal.archived) {
+                throw new Error("This goal is archived");
+            }
+            if (!owner.friends.includes(user._id)) {
+                throw new Error("This goal is not being shared with you");
+            }
         }
         const commitments = await ctx.db.query("commitments").withIndex("by_goal", q =>
             q.eq("goal", goalId)
@@ -326,14 +345,62 @@ async function getOwnedPendingCommitment(ctx: QueryCtx, commitmentId: Id<"commit
 
 export const completeCommitment = mutation({
     args: {
-        commitmentId: v.id("commitments"),
+        key: v.string(),
     },
-    handler: async (ctx, { commitmentId }) => {
-        await getOwnedPendingCommitment(ctx, commitmentId);
+    handler: async (ctx, { key }) => {
+        const user = await getUser(ctx);
+        const goals = await ctx.db.query("goals").withIndex("by_owner", q =>
+            q.eq("owner", user._id)
+        ).collect();
+        const goal = goals.find(g => g.key === key);
+        if (!goal) {
+            throw new Error("Goal not found");
+        }
+        const commitments = await ctx.db.query("commitments").withIndex("by_goal", q =>
+            q.eq("goal", goal._id)
+        ).collect();
+        const results = await Promise.all(commitments.filter(c => {
+            try {
+                assertCommitmentIsPending(c);
+                return true;
+            } catch {
+                return false;
+            }
+        }).map(async commitment => {
+            await ctx.db.patch(commitment._id, { completedAt: Date.now() });
+            return 1
+        }))
+        return { completed: results.reduce((a, b) => a + b, 0) }
+    }
+})
 
-        await ctx.db.patch(commitmentId, {
-            completedAt: Date.now(),
-        });
+export const getRecentCommitments = query({
+    args: {},
+    handler: async (ctx) => {
+        const user = await getUser(ctx);
+        // get all commitments for user's goals that were completed, cancelled or due in last 5mins and up to 5min from now
+        const goals = await ctx.db.query("goals").withIndex("by_owner", q =>
+            q.eq("owner", user._id)
+        ).collect();
+        const now = Date.now();
+        const fiveMins = 5 * 60 * 1000;
+        const recentCommitments = (await Promise.all(goals.flatMap(goal =>
+            Promise.all(goal.commitments.map(async commitmentId => {
+                const commitment = await ctx.db.get(commitmentId);
+                if (!commitment) {
+                    return null;
+                }
+                if (
+                    (commitment.completedAt !== null && commitment.completedAt >= now - fiveMins) ||
+                    (commitment.cancelled !== null && commitment.cancelled.at >= now - fiveMins) ||
+                    (commitment.due >= BigInt(now - fiveMins) && commitment.due <= BigInt(now + fiveMins))
+                ) {
+                    return commitment;
+                }
+                return null;
+            }))
+        ))).flat().filter((c): c is Doc<"commitments"> => c !== null);
+        return recentCommitments;
     }
 })
 

@@ -49,7 +49,7 @@ function YourGoals() {
                 <div>No goals yet. Create one!</div>
                 <CreateSampleGoalButton />
             </>}
-            {goals.map(goal => <GoalCard key={goal._id.toString()} goal={goal}><GoalCardShortCommitmentButtons goal={goal} /><GoalCardActionButtons goal={goal} /></GoalCard>)}
+            {goals.map(goal => <GoalCard key={goal._id.toString()} goal={goal}><GoalCardShortCommitmentButtons goal={goal} /><GoalCardActionButtons goal={goal} showViewButton={true} /></GoalCard>)}
             <CreateGoalButton />
         </>}
     </div>

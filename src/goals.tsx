@@ -1,10 +1,10 @@
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { Doc, Id } from "../convex/_generated/dataModel";
-import { useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { BackButton } from "./App";
-import classNames from "classnames";
-import { useTimer } from "./util";
+import { useEphemeral } from "./util";
+import { CommitmentCardResult } from "./commitments";
 
 export function CreateSampleGoalButton() {
     const createGoal = useMutation(api.functions.createGoal);
@@ -40,6 +40,7 @@ export function GoalCard({ goal, children }: { goal: Doc<"goals">, children?: Re
 }
 
 export function GoalCardShortCommitmentButtons({ goal }: { goal: Doc<"goals"> }) {
+    // todo: it doesn't make sense to keep when a commitment alraedy exists for this goal
     const createCommitment = useMutation(api.functions.createCommitment);
     const shortCommitmentIntervals = {
         "5s": 5 * 1000,
@@ -62,7 +63,15 @@ export function GoalCardShortCommitmentButtons({ goal }: { goal: Doc<"goals"> })
     )}</div>
 }
 
-export function GoalCardActionButtons({ goal }: { goal: Doc<"goals"> }) {
+export function GoalCardViewButton({ goal }: { goal: Doc<"goals"> }) {
+    const navigate = useNavigate();
+    const viewGoal = (goalId: Id<"goals">) => {
+        navigate(`/goal/${goalId.toString()}`);
+    }
+    return <button className="_button" onClick={() => viewGoal(goal._id)}>View</button>
+}
+
+export function GoalCardActionButtons({ goal, showViewButton }: { goal: Doc<"goals">, showViewButton?: boolean }) {
     const updateGoal = useMutation(api.functions.updateGoal);
     const editGoal = () => {
         const details = promptForGoalDetails();
@@ -84,6 +93,7 @@ export function GoalCardActionButtons({ goal }: { goal: Doc<"goals"> }) {
 
     return (
         <div className="flex gap-2">
+            {showViewButton && <GoalCardViewButton goal={goal} />}
             <button className="_button" onClick={editGoal}>Edit</button>
             <button className="_button" onClick={archiveGoal}>Archive</button>
         </div>
@@ -111,9 +121,15 @@ export function GoalPage() {
     const params = useParams<{ goalId: string }>();
     const goalId = params.goalId as Id<"goals">;
     const goal = useQuery(api.functions.getGoalPublic, { goalId });
+    const commitments = goal?.commitments;
 
-    const commitments = goal?.commitments?.sort((a, b) => -(a.due - b.due)); // newest due first
-    const now = useTimer();
+    const [wasJustCopied, setWasJustCopied] = useEphemeral(false, 2000);
+    const copyCompletionLink = () => {
+        if (!goal) return;
+        navigator.clipboard.writeText(`${window.location.origin}/complete/${goal.goal.key}`);
+        setWasJustCopied(true);
+    }
+    // todo: only show compltion key once when creating goal, or show it on the timeline for others to see
 
     return <div className="flex flex-col gap-3">
         <BackButton />
@@ -123,24 +139,19 @@ export function GoalPage() {
         {!goal && <div>Loading...</div>}
         {goal && <GoalCard goal={goal.goal}>{goal.isOwn && <GoalCardActionButtons goal={goal.goal} />}</GoalCard>}
 
+        {goal?.isOwn && (
+            <div className="flex flex-col items-start gap-3 mt-4">
+                <h2 className="mb-0!">Completion Link</h2>
+                <p>Open the following link to complete a commitment for this goal:</p>
+                <button className="_button" onClick={copyCompletionLink}>{wasJustCopied ? "Copied!" : "Copy Completion Link"}</button>
+            </div>
+        )}
+
         <h2 className="mt-6">Commitments</h2>
         {!commitments && <div>Loading commitments...</div>}
         {commitments && commitments.length === 0 && <div>No commitments yet.</div>}
         {commitments && commitments.length > 0 && <div className="flex flex-col gap-2">
-            {commitments.map(commitment => {
-                const status = commitment.completedAt ? "completed" : commitment.cancelled ? "cancelled" : commitment.due < now ? "failed" : "pending";
-                return (
-                    <div key={commitment._id.toString()} className={classNames("_card flex-row! justify-between items-center py-3! pe-3!", {
-                        "bg-green-300": status === "completed",
-                        "bg-orange-300": status === "cancelled",
-                        "bg-red-300": status === "failed",
-                        "bg-amber-200": status === "pending",
-                    })}>
-                        <div>{new Date(Number(commitment.due)).toLocaleString()}</div>
-                        <div>{status.charAt(0).toUpperCase() + status.slice(1)}</div>
-                    </div>
-                )
-            })}
+            {commitments.sort((a, b) => -(a.due - b.due)).map(commitment => <CommitmentCardResult key={commitment._id.toString()} commitment={commitment} />)}
         </div>}
     </div>
 }
