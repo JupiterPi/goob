@@ -98,8 +98,6 @@ export function CreateGoalButton() {
 }
 
 export function GoalPage() {
-    // todo: show that goal is acrhived
-
     const params = useParams<{ goalId: string }>();
     const goalId = params.goalId as Id<"goals">;
     const goal = useQuery(api.functions.getGoalPublic, { goalId });
@@ -129,7 +127,7 @@ export function GoalPage() {
         {!commitments && <div>Loading commitments...</div>}
         {commitments && commitments.length === 0 && <div>No commitments yet.</div>}
         {commitments && commitments.length > 0 && <div className="flex flex-col gap-2">
-            {commitments.sort((a, b) => -(a.due - b.due)).map(commitment => <CommitmentCardResult key={commitment._id.toString()} commitment={commitment} />)}
+            {commitments.sort((a, b) => -(a.due - b.due)).map(commitment => <CommitmentCardResult key={commitment._id.toString()} commitment={commitment} showCommentButton={goal.isOwn} />)}
         </div>}
     </div>
 }

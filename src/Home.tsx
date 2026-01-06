@@ -22,7 +22,7 @@ function PendingCommitments() {
     const now = useTimer(); // so it rerenders
     const pendingCommitmentsWithGoals = oncePendingCommitmentsWithGoals?.filter(({ commitment }) => {
         // check again that the commitment is still pending, in case it changed since the query was run
-        return commitment.completedAt === null && commitment.cancelled === null && now <= Number(commitment.due);
+        return commitment.completedAt === null && commitment.cancelledAt === null && now <= Number(commitment.due);
     })
 
     return <div>

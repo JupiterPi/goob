@@ -47,18 +47,34 @@ export function CommitmentCard({ goal, commitment }: { goal: Doc<"goals">, commi
     )
 }
 
-export function CommitmentCardResult({ commitment }: { commitment: Doc<"commitments"> }) {
+export function CommitmentCardResult({ showCommentButton, commitment }: { showCommentButton: boolean, commitment: Doc<"commitments"> }) {
     const now = useTimer();
-    const status = commitment.completedAt ? "completed" : commitment.cancelled ? "cancelled" : commitment.due < now ? "failed" : "pending";
+    const status = commitment.completedAt ? "completed" : commitment.cancelledAt ? "cancelled" : commitment.due < now ? "failed" : "pending";
+
+    const commentOnCommitment = useMutation(api.functions.commentOnCommitment);
+    const comment = () => {
+        const comment = prompt("Enter your comment for this commitment:", commitment.comment ?? "");
+        if (comment === null) return;
+        commentOnCommitment({ commitmentId: commitment._id, comment });
+    }
+
     return (
-        <div key={commitment._id.toString()} className={classNames("_card flex-row! justify-between items-center py-3! pe-3!", {
+        <div key={commitment._id.toString()} className={classNames("_card py-3! pe-3! flex flex-col items-stretch", {
             "bg-green-300": status === "completed",
             "bg-orange-300": status === "cancelled",
             "bg-red-300": status === "failed",
             "bg-amber-200": status === "pending",
         })}>
-            <div>{new Date(Number(commitment.due)).toLocaleString()}</div>
-            <div>{status.charAt(0).toUpperCase() + status.slice(1)}</div>
+            <div className="flex justify-between items-center">
+                <div>{new Date(Number(commitment.due)).toLocaleString()}</div>
+                <div>{status.charAt(0).toUpperCase() + status.slice(1)}</div>
+            </div>
+            <div className={classNames("flex text-sm items-center gap-2", { "justify-end": !commitment.comment })}>
+                {commitment.comment && <div className="italic">&bdquo;{commitment.comment}&rdquo;</div>}
+                {showCommentButton && (status === "cancelled" || status === "failed") &&
+                    <button className="_button px-2! py-1! text-xs! mt-1 hover:bg-amber-100!" onClick={comment}>{commitment.comment ? "Edit" : "Comment"}</button>
+                }
+            </div>
         </div>
     );
 }
@@ -89,7 +105,7 @@ export function CompleteCommitmentsPage() {
             {!recentCommitments && <div>Loading commitments...</div>}
             {recentCommitments && recentCommitments.length === 0 && <div>No recent commitments yet.</div>}
             {recentCommitments && recentCommitments.length > 0 && <div className="flex flex-col gap-2">
-                {recentCommitments.sort((a, b) => -(a.due - b.due)).map(commitment => <CommitmentCardResult key={commitment._id.toString()} commitment={commitment} />)}
+                {recentCommitments.sort((a, b) => -(a.due - b.due)).map(commitment => <CommitmentCardResult key={commitment._id.toString()} showCommentButton={false} commitment={commitment} />)}
             </div>}
         </div>
     );

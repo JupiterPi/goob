@@ -312,7 +312,8 @@ export const createCommitment = mutation({
             goal: goal._id,
             due,
             completedAt: null,
-            cancelled: null,
+            cancelledAt: null,
+            comment: null,
         });
 
         await ctx.db.patch(goalId, {
@@ -327,7 +328,7 @@ function assertCommitmentIsPending(commitment: Doc<"commitments">) {
     if (commitment.completedAt !== null) {
         throw new Error("Commitment already completed");
     }
-    if (commitment.cancelled !== null) {
+    if (commitment.cancelledAt !== null) {
         throw new Error("Commitment already cancelled");
     }
     if (Date.now() > Number(commitment.due)) {
@@ -463,7 +464,7 @@ export const getRecentCommitments = query({
                 }
                 if (
                     (commitment.completedAt !== null && commitment.completedAt >= now - fiveMins) ||
-                    (commitment.cancelled !== null && commitment.cancelled.at >= now - fiveMins) ||
+                    (commitment.cancelledAt !== null && commitment.cancelledAt >= now - fiveMins) ||
                     (commitment.due >= BigInt(now - fiveMins) && commitment.due <= BigInt(now + fiveMins))
                 ) {
                     return commitment;
@@ -507,12 +508,27 @@ export const cancelCommitment = mutation({
         await getOwnedPendingCommitment(ctx, commitmentId);
 
         await ctx.db.patch(commitmentId, {
-            cancelled: {
-                reason,
-                at: Date.now(),
-            },
+            cancelledAt: Date.now(),
+            comment: reason,
         });
     }
 })
 
-// todo: comment on failed commitments
+export const commentOnCommitment = mutation({
+    args: {
+        commitmentId: v.id("commitments"),
+        comment: v.string(),
+    },
+    handler: async (ctx, { commitmentId, comment }) => {
+        const commitment = await getOwnedPendingCommitment(ctx, commitmentId, false);
+        if (commitment.completedAt !== null) {
+            throw new Error("Cannot comment on completed commitments");
+        }
+        if (commitment.due > BigInt(Date.now())) {
+            throw new Error("Cannot comment on pending commitment");
+        }
+        await ctx.db.patch(commitmentId, {
+            comment,
+        });
+    }
+})

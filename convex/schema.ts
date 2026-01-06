@@ -26,9 +26,7 @@ export default defineSchema({
     goal: v.id("goals"),
     due: v.number(),
     completedAt: v.nullable(v.number()),
-    cancelled: v.nullable(v.object({
-      reason: v.string(),
-      at: v.number(),
-    })),
+    cancelledAt: v.nullable(v.number()),
+    comment: v.nullable(v.string()),
   }).index("by_goal", ["goal"]),
 })
