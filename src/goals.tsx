@@ -40,27 +40,35 @@ export function GoalCard({ goal, children }: { goal: Doc<"goals">, children?: Re
 }
 
 export function GoalCardShortCommitmentButtons({ goal }: { goal: Doc<"goals"> }) {
-    // todo: it doesn't make sense to keep when a commitment alraedy exists for this goal
+    // todo: it doesn't make sense to keep when a commitment already exists for this goal
     const createCommitment = useMutation(api.functions.createCommitment);
-    const shortCommitmentIntervals = {
-        "5s": 5 * 1000,
-        "30s": 30 * 1000,
-        "1min": 60 * 1000,
-        "2min": 2 * 60 * 1000,
-        "5min": 5 * 60 * 1000,
-    }
-    const createShortCommitment = (goal: Doc<"goals">, intervalSelection: keyof typeof shortCommitmentIntervals) => {
-        const due = Date.now() + shortCommitmentIntervals[intervalSelection];
+    const createShortCommitment = (goal: Doc<"goals">, duration: number) => {
         createCommitment({
             goalId: goal._id,
-            due: due,
+            due: Date.now() + duration,
         })
     }
-    return <div className="flex gap-2">{Object.keys(shortCommitmentIntervals).map(intervalSelection =>
-        <button key={intervalSelection} className="_button" onClick={() => createShortCommitment(goal, intervalSelection as keyof typeof shortCommitmentIntervals)}>
-            {intervalSelection}
-        </button>
-    )}</div>
+    const createCustomCommitment = () => {
+        const minutesStr = prompt("Enter commitment duration in minutes:");
+        if (!minutesStr) return;
+        const minutes = parseInt(minutesStr);
+        if (isNaN(minutes) || minutes <= 0) {
+            alert("Invalid duration");
+            return;
+        }
+        createCommitment({
+            goalId: goal._id,
+            due: Date.now() + minutes * 60 * 1000,
+        });
+    }
+    return <div className="flex -space-x-px">
+        <button className="_button border-e-1! rounded-e-none! pe-3!" onClick={() => createShortCommitment(goal, 5 * 1000)}>5s</button>
+        <button className="_button border-e-1! rounded-e-none! pe-3! rounded-s-none! ps-3!" onClick={() => createShortCommitment(goal, 30 * 1000)}>30s</button>
+        <button className="_button border-e-1! rounded-e-none! pe-3! rounded-s-none! ps-3!" onClick={() => createShortCommitment(goal, 60 * 1000)}>1m</button>
+        <button className="_button border-e-1! rounded-e-none! pe-3! rounded-s-none! ps-3!" onClick={() => createShortCommitment(goal, 5 * 60 * 1000)}>5m</button>
+        <button className="_button border-e-1! rounded-e-none! pe-3! rounded-s-none! ps-3!" onClick={() => createShortCommitment(goal, 10 * 60 * 1000)}>10m</button>
+        <button className="_button rounded-s-none! ps-3!" onClick={createCustomCommitment}>+</button>
+    </div>
 }
 
 export function GoalCardViewButton({ goal }: { goal: Doc<"goals"> }) {
