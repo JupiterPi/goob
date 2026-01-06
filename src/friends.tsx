@@ -52,6 +52,7 @@ export function YourFriends() {
             <div className="flex-1"></div>
             <button className="_button" onClick={editName}>Edit</button>
         </div>
+        {friends && friends.length > 0 && friends.filter(f => !f.isMutualFriend).length > 0 && <p>When you both add each other as friends, you can view each other's goals.</p>}
         {!friends && <div>Loading friends...</div>}
         {friends && friends.length === 0 && <div className="mb-3">You have no friends yet.</div>}
         {friends && friends.length > 0 && <div className="flex flex-col gap-2">
