@@ -413,6 +413,28 @@ async function getOwnedPendingCommitment(ctx: QueryCtx, commitmentId: Id<"commit
     return commitment;
 }
 
+export const untilWhenAreTherePendingCommitments = query({
+    args: { goalId: v.id("goals") },
+    handler: async (ctx, { goalId }) => {
+        await getOwnedGoal(ctx, goalId);
+        const commitments = await ctx.db.query("commitments").withIndex("by_goal", q =>
+            q.eq("goal", goalId)
+        ).collect();
+        let lastDue = 0;
+        for (const commitment of commitments) {
+            try {
+                assertCommitmentIsPending(commitment);
+                if (commitment.due > lastDue) {
+                    lastDue = commitment.due;
+                }
+            } catch {
+                // not pending
+            }
+        }
+        return lastDue;
+    }
+})
+
 export const completeCommitment = mutation({
     args: {
         key: v.string(),

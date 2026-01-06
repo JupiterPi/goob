@@ -3,7 +3,7 @@ import { api } from "../convex/_generated/api";
 import { Doc, Id } from "../convex/_generated/dataModel";
 import { useNavigate, useParams } from "react-router";
 import { BackButton } from "./App";
-import { CopyButton, useEphemeral } from "./util";
+import { CopyButton, useEphemeral, useTimer } from "./util";
 import { CommitmentCardResult } from "./commitments";
 import { useState } from "react";
 
@@ -49,7 +49,10 @@ export function GoalCard({ goal, viewable, children }: { goal: Doc<"goals">, vie
 }
 
 export function GoalCardShortCommitmentButtons({ goal }: { goal: Doc<"goals"> }) {
-    // todo: it doesn't make sense to keep when a commitment already exists for this goal
+    const now = useTimer();
+    const untilWhenAreTherePendingCommitments = useQuery(api.functions.untilWhenAreTherePendingCommitments, { goalId: goal._id });
+    const disableCreatingNewCommitments = untilWhenAreTherePendingCommitments !== undefined && now < untilWhenAreTherePendingCommitments;
+
     const createCommitment = useMutation(api.functions.createCommitment);
     const createShortCommitment = (goal: Doc<"goals">, duration: number) => {
         createCommitment({
@@ -71,12 +74,12 @@ export function GoalCardShortCommitmentButtons({ goal }: { goal: Doc<"goals"> })
         });
     }
     return <div className="flex -space-x-px">
-        <button className="_button bg-amber-200 border-e-1! rounded-e-none! pe-3!" onClick={() => createShortCommitment(goal, 5 * 1000)}>5s</button>
-        <button className="_button bg-amber-200 border-e-1! rounded-e-none! pe-3! rounded-s-none! ps-3!" onClick={() => createShortCommitment(goal, 30 * 1000)}>30s</button>
-        <button className="_button bg-amber-200 border-e-1! rounded-e-none! pe-3! rounded-s-none! ps-3!" onClick={() => createShortCommitment(goal, 60 * 1000)}>1m</button>
-        <button className="_button bg-amber-200 border-e-1! rounded-e-none! pe-3! rounded-s-none! ps-3!" onClick={() => createShortCommitment(goal, 5 * 60 * 1000)}>5m</button>
-        <button className="_button bg-amber-200 border-e-1! rounded-e-none! pe-3! rounded-s-none! ps-3!" onClick={() => createShortCommitment(goal, 10 * 60 * 1000)}>10m</button>
-        <button className="_button bg-amber-200 rounded-s-none! ps-3!" onClick={createCustomCommitment}>+</button>
+        <button disabled={disableCreatingNewCommitments} className="_button bg-amber-200 border-e-1! rounded-e-none! pe-3!" onClick={() => createShortCommitment(goal, 5 * 1000)}>5s</button>
+        <button disabled={disableCreatingNewCommitments} className="_button bg-amber-200 border-e-1! rounded-e-none! pe-3! rounded-s-none! ps-3!" onClick={() => createShortCommitment(goal, 30 * 1000)}>30s</button>
+        <button disabled={disableCreatingNewCommitments} className="_button bg-amber-200 border-e-1! rounded-e-none! pe-3! rounded-s-none! ps-3!" onClick={() => createShortCommitment(goal, 60 * 1000)}>1m</button>
+        <button disabled={disableCreatingNewCommitments} className="_button bg-amber-200 border-e-1! rounded-e-none! pe-3! rounded-s-none! ps-3!" onClick={() => createShortCommitment(goal, 5 * 60 * 1000)}>5m</button>
+        <button disabled={disableCreatingNewCommitments} className="_button bg-amber-200 border-e-1! rounded-e-none! pe-3! rounded-s-none! ps-3!" onClick={() => createShortCommitment(goal, 10 * 60 * 1000)}>10m</button>
+        <button disabled={disableCreatingNewCommitments} className="_button bg-amber-200 rounded-s-none! ps-3!" onClick={createCustomCommitment}>+</button>
     </div>
 }
 

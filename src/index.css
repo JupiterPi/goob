@@ -19,6 +19,10 @@ h2 {
   @apply bg-amber-300;
 }
 
+._button:disabled {
+  @apply bg-gray-300 opacity-75 cursor-not-allowed;
+}
+
 ._card {
   @apply border-2 p-4 rounded-md shadow-md flex flex-col;
 }

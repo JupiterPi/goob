@@ -38,7 +38,6 @@ export function CommitmentCard({ goal, commitment }: { goal: Doc<"goals">, commi
             <div className="flex flex-col items-start gap-1.5">
                 <b className="text-md">{goal.title}</b>
                 <button className="_button px-2! py-1! border-2! border-gray-700! bg-amber-100! hover:bg-amber-50!" onClick={undoOrCancelCommitment}>{canUndoCommitment ? "Undo" : "Cancel"}</button>
-                {/* todo: allow cancelling without reason up to 10s after creation, reflect in button "undo" */}
             </div>
             <div className="flex justify-end">
                 <b className="text-md text-3xl">{timeRemainingStr}</b>
