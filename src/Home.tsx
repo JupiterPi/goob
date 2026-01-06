@@ -1,6 +1,6 @@
 import { useQuery } from "convex/react"
 import { api } from "../convex/_generated/api";
-import { CreateGoalButton, CreateSampleGoalButton, GoalCard, GoalCardActionButtons, GoalCardShortCommitmentButtons } from "./goals";
+import { CreateGoalButton, CreateSampleGoalButton, GoalCard, GoalCardShortCommitmentButtons } from "./goals";
 import { useTimer } from "./util";
 import { CommitmentCard } from "./commitments";
 import { YourFriends } from "./friends";
@@ -49,7 +49,7 @@ function YourGoals() {
                 <div>No goals yet. Create one!</div>
                 <CreateSampleGoalButton />
             </>}
-            {goals.map(goal => <GoalCard key={goal._id.toString()} goal={goal}><GoalCardShortCommitmentButtons goal={goal} /><GoalCardActionButtons goal={goal} showViewButton={true} /></GoalCard>)}
+            {goals.map(goal => <GoalCard key={goal._id.toString()} goal={goal} viewable={true}><GoalCardShortCommitmentButtons goal={goal} /></GoalCard>)}
             <CreateGoalButton />
         </>}
     </div>

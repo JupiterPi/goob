@@ -4,7 +4,7 @@ import { useEphemeral } from "./util";
 import { useNavigate, useParams } from "react-router";
 import { Id } from "../convex/_generated/dataModel";
 import { BackButton } from "./App";
-import { GoalCard, GoalCardViewButton } from "./goals";
+import { GoalCard } from "./goals";
 
 export function YourFriends() {
     const userInfo = useQuery(api.functions.getUserInfo);
@@ -85,9 +85,7 @@ export function FriendPage() {
                 {friendInfoAndGoals.goals.length === 0 && <div>This friend has no goals yet.</div>}
                 {friendInfoAndGoals.goals.length > 0 && <div className="flex flex-col gap-2 mt-2">
                     {friendInfoAndGoals.goals.map(goal => (
-                        <GoalCard key={goal._id.toString()} goal={goal}>
-                            <GoalCardViewButton goal={goal} />
-                        </GoalCard>
+                        <GoalCard key={goal._id.toString()} goal={goal} viewable={true} ></GoalCard>
                     ))}
                 </div>}
             </>}

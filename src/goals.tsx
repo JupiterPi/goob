@@ -29,9 +29,16 @@ function promptForGoalDetails(): { title: string; description: string } | null {
     return { title, description }
 }
 
-export function GoalCard({ goal, children }: { goal: Doc<"goals">, children?: React.ReactNode }) {
+export function GoalCard({ goal, viewable, children }: { goal: Doc<"goals">, viewable?: boolean, children?: React.ReactNode }) {
+    const navigate = useNavigate();
+    const viewGoal = () => {
+        navigate(`/goal/${goal._id}`);
+    }
     return <div className="_card">
-        <h3 className="text-xl font-bold mb-2">{goal.title}</h3>
+        <h3 className="text-xl font-bold mb-2 inline-flex justify-between">
+            {goal.title}
+            {viewable && <button className="_button px-3! py-1!" onClick={viewGoal}>Open</button>}
+        </h3>
         <p className="mb-3">{goal.description}</p>
         <div className="flex flex-col gap-2">
             {children}
@@ -62,24 +69,16 @@ export function GoalCardShortCommitmentButtons({ goal }: { goal: Doc<"goals"> })
         });
     }
     return <div className="flex -space-x-px">
-        <button className="_button border-e-1! rounded-e-none! pe-3!" onClick={() => createShortCommitment(goal, 5 * 1000)}>5s</button>
-        <button className="_button border-e-1! rounded-e-none! pe-3! rounded-s-none! ps-3!" onClick={() => createShortCommitment(goal, 30 * 1000)}>30s</button>
-        <button className="_button border-e-1! rounded-e-none! pe-3! rounded-s-none! ps-3!" onClick={() => createShortCommitment(goal, 60 * 1000)}>1m</button>
-        <button className="_button border-e-1! rounded-e-none! pe-3! rounded-s-none! ps-3!" onClick={() => createShortCommitment(goal, 5 * 60 * 1000)}>5m</button>
-        <button className="_button border-e-1! rounded-e-none! pe-3! rounded-s-none! ps-3!" onClick={() => createShortCommitment(goal, 10 * 60 * 1000)}>10m</button>
-        <button className="_button rounded-s-none! ps-3!" onClick={createCustomCommitment}>+</button>
+        <button className="_button bg-amber-200 border-e-1! rounded-e-none! pe-3!" onClick={() => createShortCommitment(goal, 5 * 1000)}>5s</button>
+        <button className="_button bg-amber-200 border-e-1! rounded-e-none! pe-3! rounded-s-none! ps-3!" onClick={() => createShortCommitment(goal, 30 * 1000)}>30s</button>
+        <button className="_button bg-amber-200 border-e-1! rounded-e-none! pe-3! rounded-s-none! ps-3!" onClick={() => createShortCommitment(goal, 60 * 1000)}>1m</button>
+        <button className="_button bg-amber-200 border-e-1! rounded-e-none! pe-3! rounded-s-none! ps-3!" onClick={() => createShortCommitment(goal, 5 * 60 * 1000)}>5m</button>
+        <button className="_button bg-amber-200 border-e-1! rounded-e-none! pe-3! rounded-s-none! ps-3!" onClick={() => createShortCommitment(goal, 10 * 60 * 1000)}>10m</button>
+        <button className="_button bg-amber-200 rounded-s-none! ps-3!" onClick={createCustomCommitment}>+</button>
     </div>
 }
 
-export function GoalCardViewButton({ goal }: { goal: Doc<"goals"> }) {
-    const navigate = useNavigate();
-    const viewGoal = (goalId: Id<"goals">) => {
-        navigate(`/goal/${goalId.toString()}`);
-    }
-    return <button className="_button" onClick={() => viewGoal(goal._id)}>View</button>
-}
-
-export function GoalCardActionButtons({ goal, showViewButton }: { goal: Doc<"goals">, showViewButton?: boolean }) {
+export function GoalCardActionButtons({ goal }: { goal: Doc<"goals"> }) {
     const updateGoal = useMutation(api.functions.updateGoal);
     const editGoal = () => {
         const details = promptForGoalDetails();
@@ -101,7 +100,6 @@ export function GoalCardActionButtons({ goal, showViewButton }: { goal: Doc<"goa
 
     return (
         <div className="flex gap-2">
-            {showViewButton && <GoalCardViewButton goal={goal} />}
             <button className="_button" onClick={editGoal}>Edit</button>
             <button className="_button" onClick={archiveGoal}>Archive</button>
         </div>
