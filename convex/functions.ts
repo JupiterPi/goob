@@ -12,10 +12,10 @@ export const storeUser = mutation({
 
         const user = await ctx.db.query("users").withIndex("by_tokenIdentifier", q => q.eq("tokenIdentifier", id.tokenIdentifier)).unique();
         if (user !== null) {
-            if (user.name !== id.name) {
+            /* if (user.name !== id.name) {
                 // name has changed
                 await ctx.db.patch(user._id, { name: id.name });
-            }
+            } */
             return user._id;
         }
 
@@ -52,6 +52,30 @@ export const getUserInfo = query({
             _id: user._id,
             name: user.name,
             friendCode: user._id.toString(),
+        };
+    }
+})
+
+export const getFriendInfoAndGoals = query({
+    args: {
+        friendId: v.id("users"),
+    },
+    handler: async (ctx, { friendId }) => {
+        const user = await getUser(ctx);
+        const friend = await ctx.db.get(friendId);
+        if (!friend) {
+            throw new Error("Friend not found");
+        }
+        if (!user.friends.includes(friend._id)) {
+            throw new Error("Not your friend");
+        }
+        const goals = (await ctx.db.query("goals").withIndex("by_owner", q =>
+            q.eq("owner", friend._id)
+        ).collect()).filter(goal => !goal.hide && !goal.archived);
+        return {
+            _id: friend._id,
+            name: friend.name,
+            goals,
         };
     }
 })
@@ -260,6 +284,31 @@ export const getPendingCommitmentsWithGoals = query({
                     return false;
                 }
             })
+    }
+})
+
+export const getGoalPublic = query({
+    args: {
+        goalId: v.id("goals"),
+    },
+    handler: async (ctx, { goalId }) => {
+        const user = await getUser(ctx);
+        const goal = await ctx.db.get(goalId);
+        if (!goal) {
+            throw new Error("Goal not found");
+        }
+        const owner = await ctx.db.get(goal.owner);
+        if (!owner) {
+            throw new Error("Goal owner not found");
+        }
+        const mayViewGoal = goal.owner === user._id || (!goal.hide && !goal.archived && owner.friends.includes(user._id));
+        if (!mayViewGoal) {
+            throw new Error("You do not have permission to view this goal");
+        }
+        const commitments = await ctx.db.query("commitments").withIndex("by_goal", q =>
+            q.eq("goal", goalId)
+        ).collect();
+        return { ownerName: owner.name, isOwn: goal.owner === user._id, goal, commitments }
     }
 })
 

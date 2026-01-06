@@ -11,6 +11,9 @@ import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/clerk-re
 import Home from "./Home";
 import { useEffect } from "react";
 import { api } from "../convex/_generated/api";
+import { BrowserRouter, Route, Routes } from "react-router";
+import { GoalPage } from "./goals";
+import { FriendPage } from "./friends";
 
 export default function App() {
   const { isAuthenticated } = useConvexAuth();
@@ -34,7 +37,13 @@ export default function App() {
       </header>
       <main className="p-8">
         <Authenticated>
-          <Home />
+          <BrowserRouter>
+            <Routes>
+              <Route index element={<Home />} />
+              <Route path="goal/:goalId" element={<GoalPage />} />
+              <Route path="friend/:friendId" element={<FriendPage />} />
+            </Routes>
+          </BrowserRouter>
         </Authenticated>
         <Unauthenticated>
           <SignInForm />
@@ -62,6 +71,21 @@ function SignInForm() {
           Sign up
         </button>
       </SignUpButton>
+    </div>
+  );
+}
+
+export function BackButton() {
+  return (
+    <div className="flex items-start">
+      <button
+        className="mb-4"
+        onClick={() => {
+          window.history.back();
+        }}
+      >
+        &lt; Back
+      </button>
     </div>
   );
 }

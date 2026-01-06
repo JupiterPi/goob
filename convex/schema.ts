@@ -24,5 +24,5 @@ export default defineSchema({
       reason: v.string(),
       at: v.number(),
     })),
-  }),
+  }).index("by_goal", ["goal"]),
 })
