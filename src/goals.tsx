@@ -38,6 +38,7 @@ export function GoalCard({ goal, viewable, children }: { goal: Doc<"goals">, vie
     return <div className="_card">
         <h3 className="text-xl font-bold mb-2 inline-flex justify-between">
             {goal.title}
+            {goal.archived && <span className="text-sm italic text-gray-600 ms-2">(archived)</span>}
             {viewable && <button className="_button px-3! py-1!" onClick={viewGoal}>Open</button>}
         </h3>
         <p className="mb-3">{goal.description}</p>
@@ -113,10 +114,10 @@ export function GoalPage() {
 
         {!goal && <div>Loading...</div>}
         {goal && <GoalCard goal={goal.goal}>
-            {goal.isOwn && <GoalCardActionButtons goal={goal.goal} />}
+            {goal.isOwn && !goal.goal.archived && <GoalCardActionButtons goal={goal.goal} />}
         </GoalCard>}
 
-        {goal?.isOwn && !showCompletionKeySection && <>
+        {goal?.isOwn && !goal?.goal.archived && !showCompletionKeySection && <>
             <button className="_button" onClick={() => setShowCompletionKeySection(true)}>&gt; Completion Key Options</button>
         </>}
         {goal?.isOwn && showCompletionKeySection && <>
